@@ -548,7 +548,6 @@
     </div>
     <div class="license-error no-print" id="licenseError" style="display:none"></div>
     <button class="btn primary" id="licenseActivateBtn" style="width:100%">فعال‌سازی</button>
-    <p class="license-note">هر کد فعال‌سازی حداکثر روی ۳ دستگاه قابل استفاده است.</p>
   </div>
 </div>
 
@@ -782,28 +781,48 @@ function clearStoredLicense(){
   try{ localStorage.removeItem(LICENSE_KEY); }catch(e){}
 }
 async function licenseApiCall(action, code, deviceId){
-  const res = await fetch(LICENSE_API, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action, code, deviceId})
-  });
+  let res;
+  try{
+    res = await fetch(LICENSE_API, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action, code, deviceId})
+    });
+  }catch(networkErr){
+    /* fetch فقط زمانی throw می‌کند که اصلاً درخواست به مقصد نرسیده باشد —
+       رایج‌ترین علت‌ها: قطعی اینترنت، یا مسدود شدن توسط CORS (که مرورگر برای امنیت
+       جزئیات آن را پنهان می‌کند، اما پیام خطا معمولاً شامل «Failed to fetch» است). */
+    return { networkError: true, errorDetail: (networkErr && networkErr.message) ? networkErr.message : String(networkErr) };
+  }
+  let rawText = '';
+  try{ rawText = await res.text(); }catch(e){ /* بدنه پاسخ خوانده نشد */ }
   let data = null;
-  try{ data = await res.json(); }catch(e){ /* پاسخ JSON نبود */ }
-  return { httpOk: res.ok, status: res.status, data };
+  if(rawText){
+    try{ data = JSON.parse(rawText); }catch(e){ /* پاسخ JSON معتبر نبود */ }
+  }
+  return { httpOk: res.ok, status: res.status, data, rawText };
 }
 function licenseCallSucceeded(result){
-  if(!result || !result.httpOk || !result.data) return false;
+  if(!result || result.networkError || !result.httpOk || !result.data) return false;
   const d = result.data;
   return d.success === true || d.valid === true || d.status === 'ok' || d.status === 'active' || d.status === 'success';
 }
 function licenseErrorText(result){
-  if(result && result.data && (result.data.message || result.data.error)){
+  if(!result) return 'خطای نامشخص در ارتباط با سرور فعال‌سازی.';
+  if(result.networkError){
+    return 'ارتباط با سرور فعال‌سازی برقرار نشد (خطای شبکه یا CORS): ' + (result.errorDetail || 'نامشخص');
+  }
+  if(result.data && (result.data.message || result.data.error)){
     return result.data.message || result.data.error;
   }
-  if(result && result.httpOk === false && result.status){
-    return 'کد فعال‌سازی معتبر نیست یا سقف مجاز دستگاه‌ها پر شده است.';
+  if(!result.httpOk){
+    return 'سرور فعال‌سازی خطای HTTP ' + result.status + ' برگرداند' + (result.rawText ? ('؛ پاسخ: ' + result.rawText.slice(0,200)) : '.');
   }
-  return 'ارتباط با سرور فعال‌سازی برقرار نشد. اتصال اینترنت را بررسی کنید.';
+  if(!result.data){
+    return 'پاسخ سرور در قالب مورد انتظار نبود' + (result.rawText ? ('؛ پاسخ خام: ' + result.rawText.slice(0,200)) : '.');
+  }
+  return 'کد فعال‌سازی تأیید نشد.';
 }
 
 function showLicenseGate(){
@@ -861,7 +880,7 @@ async function handleLicenseActivate(){
     render();
   }catch(e){
     setLicenseGateLoading(false);
-    setLicenseGateError('ارتباط با سرور فعال‌سازی برقرار نشد. اتصال اینترنت را بررسی کنید.');
+    setLicenseGateError('خطای غیرمنتظره: ' + ((e && e.message) ? e.message : String(e)));
   }
 }
 /* بعد از ورود موفق، در پس‌زمینه و فقط در صورت اتصال، اعتبار را دوباره بررسی می‌کند.

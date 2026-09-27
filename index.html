@@ -250,6 +250,13 @@
     return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
   }
 
+  /* اگر این صفحه (Landing) داخل پنجره نصب‌شده standalone باز شده — چه از طریق آیکن نصب‌شده قدیمی،
+     چه با دکمه «Open in app» مرورگر — بلافاصله به داشبورد هدایت شو تا کاربر هرگز داخل اپ نصب‌شده
+     صفحه فرود را نبیند. */
+  if (isStandalone()) {
+    window.location.replace('./دفتریار-معلم.html');
+  }
+
   function renderInstallState(){
     var installBtn = document.getElementById('installBtn');
     var enterBtn = document.getElementById('enterBtn');
