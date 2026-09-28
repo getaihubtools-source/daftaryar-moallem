@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تست ارتباط لایسنس</title>
+
+  <style>
+    body {
+      font-family: Tahoma, sans-serif;
+      background: #0B0F1A;
+      color: #fff;
+      margin: 0;
+      padding: 24px;
+    }
+
+    .box {
+      max-width: 500px;
+      margin: 30px auto;
+      background: #151B2B;
+      padding: 24px;
+      border-radius: 16px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      margin-top: 12px;
+      border-radius: 10px;
+      border: 1px solid #39445C;
+      font-size: 15px;
+    }
+
+    input {
+      background: #0B0F1A;
+      color: white;
+    }
+
+    button {
+      background: #00E5FF;
+      color: #071018;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #result {
+      margin-top: 18px;
+      padding: 14px;
+      background: #0B0F1A;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.8;
+    }
+
+    .info {
+      margin-top: 15px;
+      font-size: 13px;
+      color: #AEB8CC;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h2>تست ارتباط لایسنس</h2>
+
+  <p class="info">
+    این صفحه فقط ارتباط مرورگر با سرور لایسنس را بررسی می‌کند.
+    هیچ دستگاهی فعال نمی‌شود.
+  </p>
+
+  <input
+    id="licenseCode"
+    type="text"
+    placeholder="کد لایسنس را وارد کنید"
+  >
+
+  <button onclick="testConnection()">
+    تست اتصال به سرور
+  </button>
+
+  <div id="result">آماده تست...</div>
+
+</div>
+
+<script>
+
+const LICENSE_API =
+  "https://daftaryar-license.get-aihubtools.workers.dev";
+
+async function testConnection() {
+
+  const result = document.getElementById("result");
+  const code = document.getElementById("licenseCode").value.trim();
+
+  if (!code) {
+    result.textContent = "لطفاً کد لایسنس را وارد کنید.";
+    return;
+  }
+
+  result.textContent = "در حال اتصال به سرور...";
+
+  try {
+
+    const response = await fetch(LICENSE_API, {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        action: "validate",
+        code: code,
+        deviceId: "browser-test-device"
+      })
+    });
+
+    const text = await response.text();
+
+    result.textContent =
+      "HTTP Status: " + response.status +
+      "\n\nپاسخ Worker:\n" +
+      text;
+
+  } catch (error) {
+
+    result.textContent =
+      "❌ خطا در ارتباط\n\n" +
+      error.toString();
+  }
+}
+
+</script>
+
+</body>
+</html>
